@@ -1,0 +1,231 @@
+    %\documentclass[12pt]{beamer}
+    \documentclass[unknownkeysallowed]{beamer}
+    \usetheme{Oxygen}
+    \usepackage{thumbpdf}
+    %\usepackage{wasysym}
+    %\usepackage{ucs}
+    \usepackage[UTF8,noindent]{ctexcap}
+    \usepackage{pgf,pgfarrows,pgfnodes,pgfautomata,pgfheaps,pgfshade}
+    \usepackage{verbatim}
+    \usepackage{indentfirst}
+    \usepackage{graphicx}
+    \usepackage{subfigure}
+    \usepackage{float}
+    \usepackage{amsmath, amsthm, amssymb}
+    \usepackage{algorithm}
+    \usepackage{color}
+    \usepackage{exercise}
+    \usepackage{algpseudocode}
+    \usepackage{graphics}
+    \usepackage{epsfig}
+    \usepackage{bbm}
+    \usepackage{tabu}
+    \usepackage{pgf, tikz}
+    \usepackage{geometry}   %设置页边距的宏包
+    \usepackage{listings}
+    \usepackage{verbatim}
+    \usepackage{tikz}
+    
+    
+    \tikzstyle{block} = [rectangle, draw, fill=blue!20, text width=4em, minimum height=3em, text centered, rounded corners]
+    \tikzstyle{hugeBlock} = [rectangle, draw, fill=blue!20,
+        text width=5em, text centered, rounded corners, minimum height=4em]
+    \tikzstyle{line} = [draw, -latex]
+    
+    
+    \pdfinfo
+    {
+      /Title       (abc)
+      /Creator     (abc)
+      /Author      (abc)
+    }
+    
+    \newcommand{\kai}[1]{\kaishu #1 }  % kaishu
+    
+    \title{\kai 用贝叶斯线性回归预测比特币价格变化}
+    \author{\kai 财通基金 \quad 量化投资部}
+    %\institute{\kai 财通基金}
+    %\date{September 6th 2006}
+    
+    \begin{document}
+    
+    \frame{\titlepage}
+    
+    \section*{}
+    \begin{frame}
+      \frametitle{Outline}
+      \tableofcontents[section=1,hidesubsections]
+    \end{frame}
+    
+    \AtBeginSection[]
+    {
+      \frame<handout:0>
+      {
+        \frametitle{Outline}
+        \tableofcontents[currentsection,hideallsubsections]
+      }
+    }
+    
+    \AtBeginSubsection[]
+    {
+      \frame<handout:0>
+      {
+        \frametitle{Outline}
+        \tableofcontents[sectionstyle=show/hide,subsectionstyle=show/shaded/hide]
+      }
+    }
+    
+    \newcommand<>{\highlighton}[1]{%
+      \alt#2{\structure{#1}}{{#1}}
+    }
+    
+    \newcommand{\icon}[1]{\pgfimage[height=1em]{#1}}
+    
+    
+    
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    %%%%%%%%%% Content starts here %%%%%%%%%%
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    
+
+
+
+
+    \section{问题概述}
+    \begin{frame}
+      \frametitle{问题概述}
+      \framesubtitle{研究目标与数据}
+      \begin{alertblock}{目标与方法}
+        \begin{itemize}
+          \item 基于过去两年的比特币交易信息预测未来价格变化。
+          \item 用贝叶斯线性回归模型预测， 建立虚拟账户评估预测表现。
+        \end{itemize}
+      \end{alertblock}
+      
+      \begin{block}{数据}
+        \begin{itemize}
+          \item \highlighton{数据集1}：（目前由于电脑没办法翻墙还没获得）比特币中国交易平台okex.com中2017年1月到2018年6月的价格和定单簿数据
+        \end{itemize}
+      \end{block} 
+    
+    \end{frame}
+    
+    \section{数据预处理}
+    \begin{frame}
+      \frametitle{数据预处理}
+      \framesubtitle{数据划分}
+      \begin{block}{训练集和测试集划分}
+        \begin{itemize}
+          \item 原始价格数据用$P$表示，包含$N$个数据，$P_{i}$表示$P$中第$i$时刻的价格， $i\in [1, N]$
+          \item 将$P$按时间顺序分为三组长度相同的数据， $P_1 = [P_1: P_{N/3}]$, $P_2 = [P_{(N/3) + 1}: P_{2N/3}]$, $P_3 = [P_{(2N/3) + 1}: P_{N}]$
+          \item 其中$P_1$用于生产时间序列及聚类
+          \item $P_2$用于线性回归拟合系数$w_0, w_1, w_2, w_3, w_4$
+          \item $P_3$用于预测比特币价格变动
+        \end{itemize}
+      \end{block}
+    \end{frame}
+    
+
+
+\begin{frame}
+  \frametitle{数据预处理}
+  \framesubtitle{数据划分}
+  \begin{block}{划分$P_1$内的数据}
+    \begin{itemize}
+      \item 用长度为$n_L$， $1\leq L\leq 3$的移动窗口
+      \item $n_1 = 180, n_2 = 360, n_3 = 720$生成$H^T, 1\leq T\leq 3$, $H$有$N - n + 1$行，$n +1$列
+      \item $j\leq n$时$H^T(i, j) = P_1[i : i + n + 1]$
+      \item $j = n + 1$时$H^T(i, j) = P_1[i + n +1] - P_1[1 + n]$
+    \end{itemize}
+  \end{block}
+
+  \begin{figure}
+    \centering
+    \includegraphics[height=3cm, width=9cm]{data_process.png}
+  \end{figure}
+
+\end{frame}
+
+\section{特征聚类}
+\begin{frame}
+  \frametitle{特征聚类}
+  \begin{block}{聚类方法}
+    \begin{itemize}
+      \item 将$H^t$用KMean的方法划分成k个聚类（建议k=100）
+      \item 计算每个聚类中最大值与最小值之差$diff_m$，（$1\leq m\leq k$）将$diff_m$排序并挑选$diff_m$最大的s个聚类
+      \item 将$diff_m$排序并挑选$diff_m$最大的s个聚类(建议s=20)
+      \item 将每个聚类中心$c_q$ ($1\leq q\leq s$)作为矩阵的一行，产生一个大小为$s*(n+1)$的矩阵C，C的每一列为聚类中心的一个特征值
+    \end{itemize}
+  \end{block}
+\end{frame}
+
+\section{拟合系数}
+\begin{frame}
+  \frametitle{用贝叶斯线性回归计算平均价格变化$\Delta p_i$}
+  \begin{alertblock}{贝叶斯线性回归公式}
+    \begin{itemize}
+     \item $E_{emp}=\frac{\sum_{i=1}^{n} y_i*exp(-1/4*||x-x_i||^2_2)}{\sum_{i=1}^{n} exp(-1/4*||x-x_i||^2_2)}\qquad$ [1]
+    \end{itemize}
+    \end{alertblock}
+  \begin{block}{参数意义}
+    \begin{itemize}
+      \item $x=P_1[i-n_L+1:i-1]$
+      \item $x_i=C[i+1,:n_L+1]$
+      \item $y_i=C[i+1,n_L+1]$
+    \end{itemize}
+  \end{block} 
+\end{frame}
+
+\begin{frame}
+  \frametitle{用$P_2$的数据进行运算}
+  \begin{block}{自变量X与应变量Y}
+    \begin{itemize}
+      \item 自变量X[$\Delta p_1, \Delta p_2, \Delta p_3, r$], 应变量Y[$\Delta p$]
+      \item 分别将$x^L = P_2[i - n_L: i - 1], 1\leq L\leq 3$, $x^L_i = C_L[i + 1, :n_L + 1]$, $y^L_i = C_L[i + 1, n_L + 1]$代入公式$[1]$得出$\Delta p_T, 1\leq T\leq 3$
+      \item $r = \frac{V_{bid} - V_{ask}}{V_{bid} + V_{ask}}\qquad$
+      \item $\Delta p = P_2[i + 1] - P_2[i]$
+    \end{itemize}
+  \end{block}
+  \begin{alertblock}{拟合X，Y求系数$w_0 - w_4$}
+    \begin{itemize}
+     \item 用Linear Regression对自变量X和应变量Y进行fit操作，$w_0$为该线性回归方程与y轴的焦点，$w_1 - w_3$为线性方程回归的系数
+    \end{itemize}
+    \end{alertblock}
+\end{frame}
+
+
+\section{数据预测}
+\begin{frame}
+  \frametitle{对$P_3$用拟合出的线性方程预测$\Delta p$}
+  \begin{block}{根据拟合出的系数$w_0 - w_4$得到X[$\Delta p_1, \Delta p_2, \Delta p_3, r$]和Y[$\Delta p$]之间的线性关系}
+    \begin{itemize}
+      \item $\Delta p =w_0+ \sum_{j=1}^{3} w_j*\Delta p_j +w_4*r$
+    \end{itemize}
+  \end{block}
+
+  \begin{figure}
+    \centering
+    \includegraphics[height=4cm, width=9cm]{relationship.png}
+  \end{figure}
+
+\end{frame}
+
+\section{附录}
+\begin{frame}
+  \begin{alertblock}{公式推导}
+    \begin{itemize}
+      \item $s_1, ..., s_K\in \mathbb{R}^d$是$K$个不同的隐藏因子, 它们出现的概率为$\mu_1, ..., \mu_K$
+      \item $T\in (1, ..., K)$是指针，有$P(T = k) = \mu_k$， 其中$1\leq k\leq K$, $x = s_T + \epsilon$
+      \item $P(y|x) = \sum_{k=1}^K P(y|x, T = k)P(T = k|x)$
+      \hspace*{1.1cm} $\propto\sum_{k=1}^K P(y|x, T = k)P(x|T = k)P(T = k)$
+      \hspace*{1.1cm} $=\sum_{k=1}^K P_k(y)P(\epsilon = (x - s_k))\mu_k$
+      \hspace*{1.1cm} $=\sum_{k=1}^K P_k(y)exp(-\frac{1}{2} \parallel x - s_k\parallel_2^2)\mu_k$
+      \item 用经验数据作为代替来估计给定$x$后$y$的概率分布
+      \item $P_{emp}(y|x) = \frac{\sum_{i=1}^n \mathbb{1}(y = y_i)exp(-\frac{1}{4}\parallel x - x_i \parallel_2^2)}{\sum_{i=1}^n exp(-\frac{1}{4}\parallel x - x_i \parallel_2^2)}$
+      $\Rightarrow E_{emp}[y|x] = \frac{\sum_{i=1}^n y_i exp(-\frac{1}{4}\parallel x - x_i \parallel_2^2)}{\sum_{i=1}^n exp(-\frac{1}{4}\parallel x - x_i \parallel_2^2)}$
+    \end{itemize}
+  \end{alertblock}
+\end{frame}
+
+
+\end{document}
